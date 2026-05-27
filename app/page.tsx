@@ -1,23 +1,29 @@
 "use client";
 
-import { FormEvent, useEffect, useRef } from "react";
-import { useChat } from "ai/react";
+import { FormEvent, useEffect, useRef, useState } from "react";
+import { useChat } from "@ai-sdk/react";
+import { DefaultChatTransport } from "ai";
 
 export default function HomePage() {
-  const { messages, input, handleInputChange, handleSubmit, status } = useChat({
-    api: "/api/chat"
+  const { messages, sendMessage, status } = useChat({
+    transport: new DefaultChatTransport({ api: "/api/chat" })
   });
+  const [input, setInput] = useState("");
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const onSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!input.trim()) return;
-    handleSubmit(event);
+
+    await sendMessage({ text: input.trim() });
+    setInput("");
   };
+
+  const isLoading = status === "submitted" || status === "streaming";
 
   return (
     <main className="flex h-screen flex-col bg-slate-950 text-slate-100">
@@ -36,33 +42,37 @@ export default function HomePage() {
             </div>
           ) : null}
 
-          {messages.map((message) => {
-            const isUser = message.role === "user";
+          {messages.map((m) => {
+            const text =
+              m.parts
+                ?.filter((part) => part.type === "text")
+                .map((part) => part.text)
+                .join("\n") ?? "";
+
             return (
               <article
-                key={message.id}
+                key={m.id}
                 className={`max-w-[85%] rounded-2xl border px-4 py-3 shadow-lg ${
-                  isUser
+                  m.role === "user"
                     ? "ml-auto border-cyan-500/30 bg-cyan-500/15 text-cyan-50"
                     : "mr-auto border-slate-700 bg-slate-900 text-slate-100"
                 }`}
               >
                 <p className="mb-1 text-xs font-medium uppercase tracking-wider text-slate-400">
-                  {isUser ? "You" : "Escrow AI"}
+                  {m.role === "user" ? "You" : "Escrow AI"}
                 </p>
                 <p className="whitespace-pre-wrap text-sm leading-relaxed">
-                  {message.content || "(No text response)"}
+                  {text || "(No text response)"}
                 </p>
               </article>
             );
           })}
 
-          {status === "submitted" || status === "streaming" ? (
+          {isLoading && (
             <div className="mr-auto rounded-2xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-slate-300">
               Escrow AI is thinking...
             </div>
-          ) : null}
-
+          )}
           <div ref={messagesEndRef} />
         </div>
       </section>
@@ -72,15 +82,15 @@ export default function HomePage() {
           <input
             name="message"
             value={input}
-            onChange={handleInputChange}
+            onChange={(event) => setInput(event.target.value)}
             placeholder="Ask about an order (e.g., D-1001)..."
             className="flex-1 rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500 focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/40"
             autoComplete="off"
           />
           <button
             type="submit"
-            disabled={!input.trim() || status === "submitted" || status === "streaming"}
-            className="rounded-xl bg-cyan-500 px-5 py-3 text-sm font-medium text-slate-950 transition hover:bg-cyan-400 disabled:cursor-not-allowed disabled:opacity-50"
+            disabled={isLoading || !input.trim()}
+            className="rounded-xl bg-cyan-500 px-5 py-3 text-sm font-medium text-slate-950 transition hover:bg-cyan-400 disabled:opacity-50"
           >
             Send
           </button>
@@ -89,4 +99,3 @@ export default function HomePage() {
     </main>
   );
 }
-
