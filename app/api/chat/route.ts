@@ -1,28 +1,24 @@
-import { streamText } from 'ai';
-import { createGoogleGenerativeAI } from '@ai-sdk/google';
-
-// Ստեղծում ենք Gemini մոդելի կապը՝ վերցնելով բանալին քո .env ֆայլից
-const google = createGoogleGenerativeAI({
-  apiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY || '',
-});
+import { generateText } from 'ai';
+// Օգտագործում ենք հատուկ DeepSeek-ի պաշտոնական գրադարանը
+import { deepseek } from '@ai-sdk/deepseek';
 
 export async function POST(req: Request) {
   try {
     const { messages } = await req.json();
 
-    const result = await streamText({
-      model: google('gemini-1.5-flash'),
+    const result = await generateText({
+      // Միանգամից կանչում ենք deepseek մոդելը
+      model: deepseek('deepseek-chat'), 
       system: `Դու "OnlineMall Escrow AI" գլխավոր խելացի գործակալն ես Hedera բլոկչեյնի վրա: 
-      Այս պահին դու գտնվում ես թեստավորման փուլում: Պատասխանիր օգտատիրոջը հակիրճ, պրոֆեսիոնալ և հայերենով:`,
+      Պատասխանիր հաճախորդներին հակիրճ, պրոֆեսիոնալ և միայն հայերենով:`,
       messages,
     });
 
-    return result.toUIMessageStreamResponse();
-  } catch (error) {
-    console.error("Սերվերի սխալ:", error);
-    return new Response(JSON.stringify({ error: "Ներքին սխալ գործակալի միացման ժամանակ" }), {
-      status: 500,
-      headers: { "content-type": "application/json" },
-    });
+    return Response.json({ content: result.text });
+    
+  } catch (error: any) {
+    console.error("DeepSeek-ի սխալը:", error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    return Response.json({ error: `Իրական սխալը (DeepSeek): ${errorMessage}` }, { status: 500 });
   }
 }
