@@ -1,27 +1,28 @@
-import { createChatHandler } from "@/features/chat-runtime/server";
-import { getHederaSystemPrompt, getHederaTools, HederaRequestError } from "@/features/chat-hedera/server";
-import { createLLM } from "@/features/chat-hedera/server/llm";
+import { streamText } from 'ai';
+import { createGoogleGenerativeAI } from '@ai-sdk/google';
 
-export const runtime = "nodejs";
-export const maxDuration = 60;
-
-const handler = createChatHandler({
-  llm: createLLM(),
-  getTools: getHederaTools,
-  getSystemPrompt: getHederaSystemPrompt,
+// Ստեղծում ենք Gemini մոդելի կապը՝ վերցնելով բանալին քո .env ֆայլից
+const google = createGoogleGenerativeAI({
+  apiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY || '',
 });
 
 export async function POST(req: Request) {
   try {
-    return await handler(req);
-  } catch (err) {
-    if (err instanceof HederaRequestError) {
-      return new Response(JSON.stringify({ error: err.message }), {
-        status: err.status,
-        headers: { "content-type": "application/json" },
-      });
-    }
-    throw err;
+    const { messages } = await req.json();
+
+    const result = await streamText({
+      model: google('gemini-1.5-flash'),
+      system: `Դու "OnlineMall Escrow AI" գլխավոր խելացի գործակալն ես Hedera բլոկչեյնի վրա: 
+      Այս պահին դու գտնվում ես թեստավորման փուլում: Պատասխանիր օգտատիրոջը հակիրճ, պրոֆեսիոնալ և հայերենով:`,
+      messages,
+    });
+
+    return result.toUIMessageStreamResponse();
+  } catch (error) {
+    console.error("Սերվերի սխալ:", error);
+    return new Response(JSON.stringify({ error: "Ներքին սխալ գործակալի միացման ժամանակ" }), {
+      status: 500,
+      headers: { "content-type": "application/json" },
+    });
   }
 }
-
