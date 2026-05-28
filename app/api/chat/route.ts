@@ -1,24 +1,37 @@
-import { generateText } from 'ai';
-// Օգտագործում ենք հատուկ DeepSeek-ի պաշտոնական գրադարանը
-import { deepseek } from '@ai-sdk/deepseek';
+import { generateText, tool } from 'ai';
+import { createOpenAI } from '@ai-sdk/openai';
+import { z } from 'zod';
+import { lockFundsOnHedera } from '../../../plugins/hedera-service';
+
+// Կարևոր է՝ հեռացրել եմ compatibility-ն, որը խանգարում էր
+const deepseek = createOpenAI({
+  apiKey: process.env.DEEPSEEK_API_KEY || '',
+  baseURL: 'https://api.deepseek.com',
+});
 
 export async function POST(req: Request) {
   try {
     const { messages } = await req.json();
 
     const result = await generateText({
-      // Միանգամից կանչում ենք deepseek մոդելը
-      model: deepseek('deepseek-chat'), 
-      system: `Դու "OnlineMall Escrow AI" գլխավոր խելացի գործակալն ես Hedera բլոկչեյնի վրա: 
-      Պատասխանիր հաճախորդներին հակիրճ, պրոֆեսիոնալ և միայն հայերենով:`,
+      model: deepseek('deepseek-chat'),
+      system: `You are the "OnlineMall Escrow AI". Manage Hedera transactions efficiently.`,
       messages,
+      tools: {
+        lock_funds: tool({
+          description: 'Locks the buyer\'s funds in a smart contract.',
+          parameters: z.object({ amount: z.number().describe('The amount in HBAR') }),
+          execute: async ({ amount }) => {
+            const txLink = await lockFundsOnHedera(amount);
+            return { success: txLink !== "ERROR", message: txLink };
+          },
+        } as any), // as any-ը հանում է կարմիր գծերը
+      },
     });
 
-    return Response.json({ content: result.text });
-    
+    return Response.json({ content: result.text || 'Գործողությունը կատարված է' });
   } catch (error: any) {
-    console.error("DeepSeek-ի սխալը:", error);
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    return Response.json({ error: `Իրական սխալը (DeepSeek): ${errorMessage}` }, { status: 500 });
+    console.error("Backend Error:", error);
+    return Response.json({ error: error.message }, { status: 500 });
   }
 }
