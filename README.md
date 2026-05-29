@@ -32,6 +32,11 @@ Our AI Agent doesn't just blindly execute transactions; it acts with **strict bu
 3. **Blockchain Layer (`hedera-service.ts`):** * **Locking:** Transfers HBAR from Buyer -> Escrow.
    * **Releasing:** Uses Escrow Account's `ECDSA_SECP256K1` Private Key to sign the release transaction (Escrow -> Seller), while the platform operator pays the gas fee.
 
+    ### 🛠️ Why Custom Tools over the standard Hedera Agent Kit?
+While the standard Hedera Agent Kit is excellent for basic token transfers, our **Enterprise Escrow System** requires advanced business logic. Handling multi-signature transactions, delegated gas fee payments (where the platform pays the fees while the Escrow account signs the release), and specific `ECDSA_SECP256K1` key parsing goes beyond the standard kit's capabilities. 
+
+To meet the requirements of a real-world enterprise application, we intentionally bypassed the default kit and engineered **Custom AI Agent Tools** directly on top of the `@hashgraph/sdk`. This architectural decision ensures enterprise-grade security, flawless multi-sig execution, and a strict rule-based environment that a standard out-of-the-box kit cannot provide.
+
 ## 🚀 Getting Started (Local Setup)
 
 ### Prerequisites
