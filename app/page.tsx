@@ -63,6 +63,31 @@ export default function EscrowDashboard() {
     setInput('');
   };
 
+  // ԱՅՍ ՆՈՐ ՖՈՒՆԿՑԻԱՆ ՍԱՐՔՈՒՄ Է ՀՂՈՒՄՆԵՐԸ ՍԵՂՄՎՈՂ
+  const renderMessage = (text: string) => {
+    if (!text) return text;
+    const linkRegex = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g;
+    const parts = [];
+    let lastIndex = 0;
+    let match;
+
+    while ((match = linkRegex.exec(text)) !== null) {
+      if (match.index > lastIndex) {
+        parts.push(text.substring(lastIndex, match.index));
+      }
+      parts.push(
+        <a key={match.index} href={match[2]} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 underline font-semibold">
+          {match[1]}
+        </a>
+      );
+      lastIndex = linkRegex.lastIndex;
+    }
+    if (lastIndex < text.length) {
+      parts.push(text.substring(lastIndex));
+    }
+    return parts.length > 0 ? parts : text;
+  };
+
   return (
     <div className="flex h-screen bg-gray-950 text-white font-sans overflow-hidden">
       <aside className="w-1/3 border-r border-gray-800 p-6 flex flex-col gap-6 bg-gray-950 z-10 shadow-xl">
@@ -98,7 +123,8 @@ export default function EscrowDashboard() {
           {messages.map((m, i) => (
             <div key={i} className={`flex gap-4 ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
               <div className={`p-4 rounded-2xl max-w-2xl text-sm ${m.role === 'user' ? 'bg-emerald-600 text-white' : 'bg-gray-800 text-gray-100'}`}>
-                {m.content}
+                {/* ԱՅՍՏԵՂ ՕԳՏԱԳՈՐԾՎՈՒՄ Է ՆՈՐ ՖՈՒՆԿՑԻԱՆ */}
+                {renderMessage(m.content)}
               </div>
             </div>
           ))}

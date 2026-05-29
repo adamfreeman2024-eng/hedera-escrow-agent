@@ -4,6 +4,10 @@ export const lockFundsOnHedera = async (amount: number): Promise<string> => {
   const operatorId = process.env.HEDERA_TESTNET_OPERATOR_ID;
   const operatorKey = process.env.HEDERA_TESTNET_OPERATOR_KEY;
 
+  // 1. Այստեղ պետք է լինի քո Escrow (երաշխավոր) հաշվի ID-ն:
+  // Առայժմ ես դրել եմ պայմանական հաշիվ, բայց դու այն պետք է փոխարինես իրական ստացողի հաշվով:
+  const escrowAccountId = process.env.ESCROW_ACCOUNT_ID || "0.0.1234567"; 
+
   if (!operatorId || !operatorKey) {
     throw new Error("Hedera credentials missing in .env");
   }
@@ -12,11 +16,10 @@ export const lockFundsOnHedera = async (amount: number): Promise<string> => {
   client.setOperator(operatorId, operatorKey);
 
   try {
-    const demoAmount = 0.001; 
-
+    // 2. Մենք ջնջեցինք demoAmount-ը և օգտագործում ենք իրական amount փոփոխականը
     const transaction = new TransferTransaction()
-      .addHbarTransfer(operatorId, new Hbar(-demoAmount, HbarUnit.Hbar))
-      .addHbarTransfer("0.0.3", new Hbar(demoAmount, HbarUnit.Hbar)) 
+      .addHbarTransfer(operatorId, new Hbar(-amount, HbarUnit.Hbar)) // Հանում ենք գնորդի հաշվից
+      .addHbarTransfer(escrowAccountId, new Hbar(amount, HbarUnit.Hbar)) // Ուղարկում ենք քո Escrow հաշվին
       .freezeWith(client);
 
     const signTx = await transaction.signWithOperator(client);
